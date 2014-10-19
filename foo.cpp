@@ -1,67 +1,54 @@
 // foo.cpp : Defines the entry point for the console application.
-//
-
-#include "stdafx.h"
 #include <malloc.h>
 #include <omp.h>
-#define TWO 1
+//Why not #define true false
+//#define TWO 2
 
-void hard_code_evolution(int* real, int* complex, int a, int b) {
-	float x2 = *real * *real;
-	float y2 = *complex * *complex;
-	double xy = *real * *complex;
-	double newreal = x2 - y2 + a;
-	double newcomplex = 2 * xy + b;
-	*real = (int)newreal;
-	*complex = (int)newcomplex;
-}
+#define INREAL(i)	field[i]
+#define INCMPL(i)	field[i+1]
+#define OUTREAL(i)	field[i]
+#define OUTCMPL(i)	field[i+1]
+#define A		8
+#define B		13
 
-double count2 = 0;
 
-double worker(int ths, int* field, long flength) {
-	double count1 = 0;
-	int evolution = 0;
-	for (; evolution < 1000; evolution++) {
-
-#pragma omp parallel num_threads(ths)
-		{
-			long i = omp_get_thread_num() * flength / ths;
-			long finish = (omp_get_thread_num() + 1) * flength / ths;
-			for (; i < finish; i++) {
-				hard_code_evolution(field + i, field + i + 1, 8, 13);
-																										#pragma omp critical (cri)
-				count1 += 1.0;	
-				count2 += 1.0;
+long worker(int* field, long flength)
+{
+	for (int evolution = 0; evolution < 1000; evolution++) {
+//I think about 32 cores.
+#pragma omp parallel for //num_threads(ths) 
+//real part must be separated from imaginary one
+			for (long i = 0; i < flength; i+=2) {
+				OUTREAL(i) = (INREAL(i) + INCMPL(i))*(INREAL(i) - INCMPL(i)) + A;
+				OUTCMPL(i) = 2*INREAL(i)*INCMPL(i) + B;
 			}
-		}
-
 		printf("evolution %d\n", evolution);
 	}
-	
-	return count1;
+//count is very good, but perfomance cup...
+	return 1000*flength;
 }
-
-int * myAlloc(int width, int height) {
-	int* arr = (int*)malloc(width * height * sizeof(int) * 2);	
-	return arr;
-}
-
-void init(int* field, long length) {
-	long i = 0;
-	for (; i < length * 2; i++) {
-		field[i] = i % 2 ? 0 : 1;
+void init(int* field, long length)
+{
+	for (long i = 0; i < length * 2; i += 2) {
+		field[i] = 1;
+		field[i + 1] = 0;
 	}
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int main()
 {
-	int* field = myAlloc(200, 200);
-	init(field, 40000);
-	double res = worker(TWO, field, 40000);
+	int* field;
+	const int width = 200;
+	const int height = 200;
 
-	printf("Woohoo!\n");
-	printf("Count1 %lf Count2 %lf\n",res, count2);
-	//have i forgot anything?
+	field = (int*) malloc(width * height * sizeof(int) * 2);
+
+	init(field, 40000);
+	long res = worker(field, 40000);
+
+	printf("Woohoo!11\n");
+	printf("Count %li \n", res);
+//Nash programist opyat' nakodil v kuchu))
+	free(field);
 	return 0;
 }
-
